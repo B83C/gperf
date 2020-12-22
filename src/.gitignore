@@ -2,4 +2,6 @@
 /configure
 /config.h.in
 /config.h_vms
+*.o
+
 
