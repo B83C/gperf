@@ -505,6 +505,7 @@ Options::~Options ()
                "\nNOLENGTH is....: %s"
                "\nRANDOM is......: %s"
                "\nDEBUG is.......: %s"
+               "\nOUTPUTINDEX is.......: %s"
                "\nlookup function name = %s"
                "\nhash function name = %s"
                "\nword list name = %s"
@@ -539,6 +540,7 @@ Options::~Options ()
                _option_word & NOLENGTH ? "enabled" : "disabled",
                _option_word & RANDOM ? "enabled" : "disabled",
                _option_word & DEBUG ? "enabled" : "disabled",
+	       _option_word & OUTPUTINDEX ? "enabled" : "disabled", 
                _function_name, _hash_name, _wordlist_name, _lengthtable_name,
                _stringpool_name, _slot_name, _initializer_suffix,
                _asso_iterations, _jump, _size_multiple, _initial_asso_value,
@@ -727,6 +729,7 @@ static const struct option long_options[] =
   { "help", no_argument, NULL, 'h' },
   { "version", no_argument, NULL, 'v' },
   { "debug", no_argument, NULL, 'd' },
+  { "return-int", required_argument, NULL, 'R' },
   { NULL, no_argument, NULL, 0 }
 };
 
@@ -741,7 +744,7 @@ Options::parse_options (int argc, char *argv[])
 
   while ((option_char =
             getopt_long (_argument_count, _argument_vector,
-                         "acCdDe:Ef:F:gGhH:i:Ij:k:K:lL:m:nN:oOpPQ:rs:S:tTvW:Z:7",
+                         "acCdDe:Ef:F:gGhH:i:Ij:k:K:lL:m:nN:oOpPQ:rs:S:tTvW:Z:7R:",
                          long_options, NULL))
          != -1)
     {
@@ -1065,22 +1068,38 @@ There is NO WARRANTY, to the extent permitted by law.\n\
             _constants_prefix = /*getopt*/optarg;
             break;
           }
-        default:
-          short_usage (stderr);
-          exit (1);
-        }
+	case 'R':
+	  {
+	      if(optarg[0] == 'i')
+	      {
+		  _option_word |= OUTPUTINDEX;
+	      }
+	      else if(optarg[0] == 's')
+	      {
+		  _option_word |= OUTPUTINDEX_S;
+	      }
+	      else{
+                fprintf (stderr, "it has to be either followed by n or s, n stands for no strcmp (meaning plain index, and in this case similar words could potentially gives you the same output), whereas s stands for strcmp (meaning it will check whether the text matches)");
+		exit(1);
+	      }
+	      break;
+	  }
+	default:
+	  short_usage (stderr);
+	  exit (1);
+	}
 
     }
 
   if (/*getopt*/optind < argc)
-    _input_file_name = argv[/*getopt*/optind++];
+      _input_file_name = argv[/*getopt*/optind++];
 
   if (/*getopt*/optind < argc)
-    {
+  {
       fprintf (stderr, "Extra trailing arguments to %s.\n", program_name);
       short_usage (stderr);
       exit (1);
-    }
+  }
 }
 
 /* ------------------------------------------------------------------------- */

@@ -109,7 +109,13 @@ enum Option_Type
   /* --- Informative output --- */
 
   /* Enable debugging (prints diagnostics to stderr).  */
-  DEBUG        = 1 << 21
+  DEBUG        = 1 << 21,
+
+  /* Set output to string index instead of default string. */
+  OUTPUTINDEX  = 1 << 22,
+
+  /* Set output to string index instead of default string. + STRING COMPARE */
+  OUTPUTINDEX_S= 1 << 23
 };
 
 /* Class manager for gperf program Options.  */
