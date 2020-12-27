@@ -33,123 +33,140 @@
 
 class KeywordExt_Factory : public Keyword_Factory
 {
-virtual Keyword *       create_keyword (const char *allchars, int allchars_length,
-                                        const char *rest, unsigned int lineno);
+    virtual Keyword *       create_keyword (const char *allchars, int allchars_length,
+	    const char *rest, unsigned int lineno);
 };
 
-Keyword *
+    Keyword *
 KeywordExt_Factory::create_keyword (const char *allchars, int allchars_length,
-                                    const char *rest, unsigned int lineno)
+	const char *rest, unsigned int lineno)
 {
-  return new KeywordExt (allchars, allchars_length, rest, lineno);
+    return new KeywordExt (allchars, allchars_length, rest, lineno);
 }
 
 /* ------------------------------------------------------------------------- */
 
-int
+    int
 main (int argc, char *argv[])
 {
-  int exitcode;
+    int exitcode;
 
-  /* Set the Options.  Open the input file and assign stdin to it.  */
-  option.parse_options (argc, argv);
+    /* Set the Options.  Open the input file and assign stdin to it.  */
+    option.parse_options (argc, argv);
 
-  /* Open the input file.  */
-  if (option.get_input_file_name ())
-    if (!freopen (option.get_input_file_name (), "r", stdin))
-      {
-        fprintf (stderr, "Cannot open input file '%s'\n",
-                 option.get_input_file_name ());
-        exit (1);
-      }
-
-  {
-    /* Initialize the keyword list.  */
-    KeywordExt_Factory factory;
-    Input inputter (stdin, &factory);
-    inputter.read_input ();
-    /* We can cast the keyword list to KeywordExt_List* because its list
-       elements were created by KeywordExt_Factory.  */
-    KeywordExt_List* list = static_cast<KeywordExt_List*>(inputter._head);
+    /* Open the input file.  */
+    if (option.get_input_file_name ())
+	if (!freopen (option.get_input_file_name (), "r", stdin))
+	{
+	    fprintf (stderr, "Cannot open input file '%s'\n",
+		    option.get_input_file_name ());
+	    exit (1);
+	}
 
     {
-      /* Search for a good hash function.  */
-      Search searcher (list);
-      searcher.optimize ();
-      list = searcher._head;
+	/* Initialize the keyword list.  */
+	KeywordExt_Factory factory;
+	Input inputter (stdin, &factory);
+	inputter.read_input ();
+	/* We can cast the keyword list to KeywordExt_List* because its list
+	   elements were created by KeywordExt_Factory.  */
+	KeywordExt_List* list = static_cast<KeywordExt_List*>(inputter._head);
 
-      /* Open the output file.  */
-      if (option.get_output_file_name ())
-        if (strcmp (option.get_output_file_name (), "-") != 0)
-          if (!freopen (option.get_output_file_name (), "w", stdout))
-            {
-              fprintf (stderr, "Cannot open output file '%s'\n",
-                       option.get_output_file_name ());
-              exit (1);
-            }
+	{
+	    /* Search for a good hash function.  */
+	    Search searcher (list);
+	    searcher.optimize ();
+	    list = searcher._head;
 
-      {
-        /* Output the hash function code.  */
-        Output outputter (searcher._head,
-                          inputter._struct_decl,
-                          inputter._struct_decl_lineno,
-                          inputter._return_type,
-                          inputter._struct_tag,
-                          inputter._verbatim_declarations,
-                          inputter._verbatim_declarations_end,
-                          inputter._verbatim_declarations_lineno,
-                          inputter._verbatim_code,
-                          inputter._verbatim_code_end,
-                          inputter._verbatim_code_lineno,
-                          inputter._charset_dependent,
-                          searcher._total_keys,
-                          searcher._max_key_len,
-                          searcher._min_key_len,
-                          searcher._hash_includes_len,
-                          searcher._key_positions,
-                          searcher._alpha_inc,
-                          searcher._total_duplicates,
-                          searcher._alpha_size,
-                          searcher._asso_values);
-        outputter.output ();
+	    /* Open the output file.  */
+	    if (option.get_output_file_name ())
+		if (strcmp (option.get_output_file_name (), "-") != 0)
+		{
+		    if(option[SEPERATE_DEF])
+		    {
+			char* temp =  option.add_output_file_extension("c", 1);
+			if (!freopen (temp, "w", stdout))
+			{
+			    fprintf (stderr, "Cannot open output file '%s'\n",
+				    option.get_output_file_name ());
+			    free(temp);
+			    exit (1);
+			}
+			free(temp);
+		    }
+		    else 
+		    {
+			if(!freopen(option.get_output_file_name (), "w", stdout)){
+			    fprintf (stderr, "Cannot open output file '%s'\n",
+				    option.get_output_file_name ());
+			    exit (1);
+			}
+		    }
 
-        /* Check for write error on stdout.  */
-        exitcode = 0;
-        if (fflush (stdout) || ferror (stdout))
-          {
-            fprintf (stderr, "error while writing output file\n");
-            exitcode = 1;
-          }
+		}
 
-        /* Here we run the Output destructor.  */
-      }
-      /* Here we run the Search destructor.  */
+	    {
+		/* Output the hash function code.  */
+		Output outputter (searcher._head,
+			inputter._struct_decl,
+			inputter._struct_decl_lineno,
+			inputter._return_type,
+			inputter._struct_tag,
+			inputter._verbatim_declarations,
+			inputter._verbatim_declarations_end,
+			inputter._verbatim_declarations_lineno,
+			inputter._verbatim_code,
+			inputter._verbatim_code_end,
+			inputter._verbatim_code_lineno,
+			inputter._charset_dependent,
+			searcher._total_keys,
+			searcher._max_key_len,
+			searcher._min_key_len,
+			searcher._hash_includes_len,
+			searcher._key_positions,
+			searcher._alpha_inc,
+			searcher._total_duplicates,
+			searcher._alpha_size,
+			searcher._asso_values);
+		outputter.output ();
+
+		/* Check for write error on stdout.  */
+		exitcode = 0;
+		if (fflush (stdout) || ferror (stdout))
+		{
+		    fprintf (stderr, "error while writing output file\n");
+		    exitcode = 1;
+		}
+
+		/* Here we run the Output destructor.  */
+	    }
+	    /* Here we run the Search destructor.  */
+	}
+
+	/* Also delete the list that was allocated inside Input and reordered
+	   inside Search.  */
+	for (KeywordExt_List *ptr = list; ptr; ptr = ptr->rest())
+	{
+	    KeywordExt *keyword = ptr->first();
+	    do
+	    {
+		KeywordExt *next_keyword = keyword->_duplicate_link;
+		delete[] const_cast<unsigned int *>(keyword->_selchars);
+		if (keyword->_rest != empty_string)
+		    delete[] const_cast<char*>(keyword->_rest);
+		if (!(keyword->_allchars >= inputter._input
+			    && keyword->_allchars < inputter._input_end))
+		    delete[] const_cast<char*>(keyword->_allchars);
+		delete keyword;
+		keyword = next_keyword;
+	    }
+	    while (keyword != NULL);
+	}
+	delete_list (list);
+
+	/* Here we run the Input destructor.  */
     }
 
-    /* Also delete the list that was allocated inside Input and reordered
-       inside Search.  */
-    for (KeywordExt_List *ptr = list; ptr; ptr = ptr->rest())
-      {
-        KeywordExt *keyword = ptr->first();
-        do
-          {
-            KeywordExt *next_keyword = keyword->_duplicate_link;
-            delete[] const_cast<unsigned int *>(keyword->_selchars);
-            if (keyword->_rest != empty_string)
-              delete[] const_cast<char*>(keyword->_rest);
-            if (!(keyword->_allchars >= inputter._input
-                  && keyword->_allchars < inputter._input_end))
-              delete[] const_cast<char*>(keyword->_allchars);
-            delete keyword;
-            keyword = next_keyword;
-          }
-        while (keyword != NULL);
-      }
-    delete_list (list);
-
-    /* Here we run the Input destructor.  */
-  }
-
-  /* Don't use exit() here, it skips the destructors.  */
-  return exitcode;
+    /* Don't use exit() here, it skips the destructors.  */
+    return exitcode;
 }

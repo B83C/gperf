@@ -115,7 +115,10 @@ enum Option_Type
   OUTPUTINDEX  = 1 << 22,
 
   /* Set output to string index instead of default string. + STRING COMPARE */
-  OUTPUTINDEX_S= 1 << 23
+  OUTPUTINDEX_S= 1 << 23,
+
+  /* Generate seperated header and definitions */
+  SEPERATE_DEF = 1 << 24
 };
 
 /* Class manager for gperf program Options.  */
@@ -221,6 +224,8 @@ public:
   /* Returns key positions.  */
   const Positions&      get_key_positions () const;
 
+  char*			add_output_file_extension(char* extension, size_t exlen);
+
 private:
   /* Prints program usage to given stream.  */
   static void           short_usage (FILE * stream);
@@ -293,7 +298,9 @@ private:
 
   /* Contains user-specified key choices.  */
   Positions             _key_positions;
+
 };
+
 
 /* Global option coordinator for the entire program.  */
 extern Options option;

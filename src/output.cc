@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <string.h> /* declares strncpy(), strchr() */
 #include <ctype.h>  /* declares isprint() */
+#include <cstdlib>  /* declares free() and malloc() */
 #include <assert.h> /* defines assert() */
 #include <limits.h> /* defines SCHAR_MAX etc. */
 #include "options.h"
@@ -800,7 +801,7 @@ Output::output_asso_values_ref (int pos) const
      unsigned int <hash> (const char *str, size_t len).  */
 
 void
-Output::output_hash_function () const
+Output::output_hash_function (...) const
 {
   /* Output the function's head.  */
   if (option[CPLUSPLUS])
@@ -829,66 +830,86 @@ Output::output_hash_function () const
   if (option[CPLUSPLUS])
     printf ("%s::", option.get_class_name ());
   printf ("%s ", option.get_hash_name ());
-  printf (option[KRC] ?
-                 "(str, len)\n"
-            "     %schar *str;\n"
-            "     %ssize_t len;\n" :
-          option[C] ?
-                 "(str, len)\n"
-            "     %sconst char *str;\n"
-            "     %ssize_t len;\n" :
-          option[ANSIC] | option[CPLUSPLUS] ?
-                 "(%sconst char *str, %ssize_t len)\n" :
-          "",
-          register_scs, register_scs);
 
   /* Note that when the hash function is called, it has already been verified
      that  min_key_len <= len <= max_key_len.  */
 
+  va_list dec;
+  va_start(dec, 1);
+  if(!va_arg(dec, int))
+  {
+      printf (option[KRC] ?
+	      "(str, len)\n"
+	      "     %schar *str;\n"
+	      "     %ssize_t len;\n" :
+	      option[C] ?
+	      "(str, len)\n"
+	      "     %sconst char *str;\n"
+	      "     %ssize_t len;\n" :
+	      option[ANSIC] | option[CPLUSPLUS] ?
+	      "(%sconst char *str, %ssize_t len);\n" :
+	      "",
+	      register_scs, register_scs);
+      va_end(dec);
+      return;
+  }
+  va_end(dec);
+  printf (option[KRC] ?
+	  "(str, len)\n"
+	  "     %schar *str;\n"
+	  "     %ssize_t len;\n" :
+	  option[C] ?
+	  "(str, len)\n"
+	  "     %sconst char *str;\n"
+	  "     %ssize_t len;\n" :
+	  option[ANSIC] | option[CPLUSPLUS] ?
+	  "(%sconst char *str, %ssize_t len)\n" :
+	  "",
+	  register_scs, register_scs);
   /* Output the function's body.  */
   printf ("{\n");
 
   /* First the asso_values array.  */
   if (_key_positions.get_size() > 0)
-    {
+  {
       /* The values in the asso_values array are all unsigned integers
-         <= MAX_HASH_VALUE + 1.  */
+	 <= MAX_HASH_VALUE + 1.  */
       printf ("  static %s%s asso_values[] =\n"
-              "    {",
-              const_readonly_array,
-              smallest_integral_type (_max_hash_value + 1));
+	      "    {",
+	      const_readonly_array,
+	      smallest_integral_type (_max_hash_value + 1));
 
       const int columns = 10;
 
       /* Calculate maximum number of digits required for MAX_HASH_VALUE + 1.  */
       int field_width = 2;
       for (int trunc = _max_hash_value + 1; (trunc /= 10) > 0;)
-        field_width++;
+	  field_width++;
 
       for (unsigned int count = 0; count < _alpha_size; count++)
-        {
-          if (count > 0)
-            printf (",");
-          if ((count % columns) == 0)
-            printf ("\n     ");
-          printf ("%*d", field_width, _asso_values[count]);
-        }
+      {
+	  if (count > 0)
+	      printf (",");
+	  if ((count % columns) == 0)
+	      printf ("\n     ");
+	  printf ("%*d", field_width, _asso_values[count]);
+      }
 
       printf ("\n"
-              "    };\n");
-    }
+	      "    };\n");
+  }
 
   if (_key_positions.get_size() == 0)
-    {
+  {
       /* Trivial case: No key positions at all.  */
       printf ("  return %s;\n",
-              _hash_includes_len ? "len" : "0");
-    }
+	      _hash_includes_len ? "len" : "0");
+  }
   else
-    {
+  {
       /* Iterate through the key positions.  Remember that Positions::sort()
-         has sorted them in decreasing order, with Positions::LASTCHAR coming
-         last.  */
+	 has sorted them in decreasing order, with Positions::LASTCHAR coming
+	 last.  */
       PositionIterator iter = _key_positions.iterator(_max_key_len);
       int key_pos;
 
@@ -896,101 +917,101 @@ Output::output_hash_function () const
       key_pos = iter.next ();
 
       if (key_pos == Positions::LASTCHAR || key_pos < _min_key_len)
-        {
-          /* We can perform additional optimizations here:
-             Write it out as a single expression. Note that the values
-             are added as 'int's even though the asso_values array may
-             contain 'unsigned char's or 'unsigned short's.  */
+      {
+	  /* We can perform additional optimizations here:
+	     Write it out as a single expression. Note that the values
+	     are added as 'int's even though the asso_values array may
+	     contain 'unsigned char's or 'unsigned short's.  */
 
-          printf ("  return %s",
-                  _hash_includes_len ? "len + " : "");
+	  printf ("  return %s",
+		  _hash_includes_len ? "len + " : "");
 
-          if (_key_positions.get_size() == 2
-              && _key_positions[0] == 0
-              && _key_positions[1] == Positions::LASTCHAR)
-            /* Optimize special case of "-k 1,$".  */
-            {
-              output_asso_values_ref (Positions::LASTCHAR);
-              printf (" + ");
-              output_asso_values_ref (0);
-            }
-          else
-            {
-              for (; key_pos != Positions::LASTCHAR; )
-                {
-                  output_asso_values_ref (key_pos);
-                  if ((key_pos = iter.next ()) != PositionIterator::EOS)
-                    printf (" + ");
-                  else
-                    break;
-                }
+	  if (_key_positions.get_size() == 2
+		  && _key_positions[0] == 0
+		  && _key_positions[1] == Positions::LASTCHAR)
+	      /* Optimize special case of "-k 1,$".  */
+	  {
+	      output_asso_values_ref (Positions::LASTCHAR);
+	      printf (" + ");
+	      output_asso_values_ref (0);
+	  }
+	  else
+	  {
+	      for (; key_pos != Positions::LASTCHAR; )
+	      {
+		  output_asso_values_ref (key_pos);
+		  if ((key_pos = iter.next ()) != PositionIterator::EOS)
+		      printf (" + ");
+		  else
+		      break;
+	      }
 
-              if (key_pos == Positions::LASTCHAR)
-                output_asso_values_ref (Positions::LASTCHAR);
-            }
+	      if (key_pos == Positions::LASTCHAR)
+		  output_asso_values_ref (Positions::LASTCHAR);
+	  }
 
-          printf (";\n");
-        }
+	  printf (";\n");
+      }
       else
-        {
-          /* We've got to use the correct, but brute force, technique.  */
-          /* Pseudo-statement or comment that avoids a compiler warning or
-             lint warning.  */
-          const char * const fallthrough_marker =
-            "#if defined __cplusplus && (__cplusplus >= 201703L || (__cplusplus >= 201103L && defined __clang_major__ && defined __clang_minor__ && __clang_major__ + (__clang_minor__ >= 9) > 3))\n"
-            "      [[fallthrough]];\n"
-            "#elif defined __GNUC__ && __GNUC__ >= 7\n"
-            "      __attribute__ ((__fallthrough__));\n"
-            "#endif\n"
-            "      /*FALLTHROUGH*/\n";
-          /* It doesn't really matter whether hval is an 'int' or
-             'unsigned int', but 'unsigned int' gives fewer warnings.  */
-          printf ("  %sunsigned int hval = %s;\n\n"
-                  "  switch (%s)\n"
-                  "    {\n"
-                  "      default:\n",
-                  register_scs, _hash_includes_len ? "len" : "0",
-                  _hash_includes_len ? "hval" : "len");
+      {
+	  /* We've got to use the correct, but brute force, technique.  */
+	  /* Pseudo-statement or comment that avoids a compiler warning or
+	     lint warning.  */
+	  const char * const fallthrough_marker =
+	      "#if defined __cplusplus && (__cplusplus >= 201703L || (__cplusplus >= 201103L && defined __clang_major__ && defined __clang_minor__ && __clang_major__ + (__clang_minor__ >= 9) > 3))\n"
+	      "      [[fallthrough]];\n"
+	      "#elif defined __GNUC__ && __GNUC__ >= 7\n"
+	      "      __attribute__ ((__fallthrough__));\n"
+	      "#endif\n"
+	      "      /*FALLTHROUGH*/\n";
+	  /* It doesn't really matter whether hval is an 'int' or
+	     'unsigned int', but 'unsigned int' gives fewer warnings.  */
+	  printf ("  %sunsigned int hval = %s;\n\n"
+		  "  switch (%s)\n"
+		  "    {\n"
+		  "      default:\n",
+		  register_scs, _hash_includes_len ? "len" : "0",
+		  _hash_includes_len ? "hval" : "len");
 
-          while (key_pos != Positions::LASTCHAR && key_pos >= _max_key_len)
-            if ((key_pos = iter.next ()) == PositionIterator::EOS)
-              break;
+	  while (key_pos != Positions::LASTCHAR && key_pos >= _max_key_len)
+	      if ((key_pos = iter.next ()) == PositionIterator::EOS)
+		  break;
 
-          if (key_pos != PositionIterator::EOS && key_pos != Positions::LASTCHAR)
-            {
-              int i = key_pos;
-              do
-                {
-                  if (i > key_pos)
-                    printf ("%s", fallthrough_marker);
-                  for ( ; i > key_pos; i--)
-                    printf ("      case %d:\n", i);
+	  if (key_pos != PositionIterator::EOS && key_pos != Positions::LASTCHAR)
+	  {
+	      int i = key_pos;
+	      do
+	      {
+		  if (i > key_pos)
+		      printf ("%s", fallthrough_marker);
+		  for ( ; i > key_pos; i--)
+		      printf ("      case %d:\n", i);
 
-                  printf ("        hval += ");
-                  output_asso_values_ref (key_pos);
-                  printf (";\n");
+		  printf ("        hval += ");
+		  output_asso_values_ref (key_pos);
+		  printf (";\n");
 
-                  key_pos = iter.next ();
-                }
-              while (key_pos != PositionIterator::EOS && key_pos != Positions::LASTCHAR);
+		  key_pos = iter.next ();
+	      }
+	      while (key_pos != PositionIterator::EOS && key_pos != Positions::LASTCHAR);
 
-              if (i >= _min_key_len)
-                printf ("%s", fallthrough_marker);
-              for ( ; i >= _min_key_len; i--)
-                printf ("      case %d:\n", i);
-            }
+	      if (i >= _min_key_len)
+		  printf ("%s", fallthrough_marker);
+	      for ( ; i >= _min_key_len; i--)
+		  printf ("      case %d:\n", i);
+	  }
 
-          printf ("        break;\n"
-                  "    }\n"
-                  "  return hval");
-          if (key_pos == Positions::LASTCHAR)
-            {
-              printf (" + ");
-              output_asso_values_ref (Positions::LASTCHAR);
-            }
-          printf (";\n");
-        }
-    }
+	  printf ("        break;\n"
+		  "    }\n"
+		  "  return hval");
+	  if (key_pos == Positions::LASTCHAR)
+	  {
+	      printf (" + ");
+	      output_asso_values_ref (Positions::LASTCHAR);
+	  }
+	  printf (";\n");
+      }
+  }
   printf ("}\n\n");
 }
 
@@ -1004,67 +1025,67 @@ void
 Output::output_keylength_table () const
 {
     if(option[OUTPUTINDEX]) return;
-  const int columns = 14;
-  const char * const indent = option[GLOBAL] ? "" : "  ";
+    const int columns = 14;
+    const char * const indent = option[GLOBAL] ? "" : "  ";
 
-  printf ("%sstatic %s%s %s[] =\n"
-          "%s  {",
-          indent, const_readonly_array,
-          smallest_integral_type (_max_key_len),
-          option.get_lengthtable_name (),
-          indent);
+    printf ("%sstatic %s%s %s[] =\n"
+	    "%s  {",
+	    indent, const_readonly_array,
+	    smallest_integral_type (_max_key_len),
+	    option.get_lengthtable_name (),
+	    indent);
 
-  /* Generate an array of lengths, similar to output_keyword_table.  */
-  int index;
-  int column;
-  KeywordExt_List *temp;
+    /* Generate an array of lengths, similar to output_keyword_table.  */
+    int index;
+    int column;
+    KeywordExt_List *temp;
 
-  column = 0;
-  for (temp = _head, index = 0; temp; temp = temp->rest())
+    column = 0;
+    for (temp = _head, index = 0; temp; temp = temp->rest())
     {
-      KeywordExt *keyword = temp->first();
+	KeywordExt *keyword = temp->first();
 
-      /* If generating a switch statement, and there is no user defined type,
-         we generate non-duplicates directly in the code.  Only duplicates go
-         into the table.  */
-      if (option[SWITCH] && !option[TYPE] && !keyword->_duplicate_link)
-        continue;
+	/* If generating a switch statement, and there is no user defined type,
+	   we generate non-duplicates directly in the code.  Only duplicates go
+	   into the table.  */
+	if (option[SWITCH] && !option[TYPE] && !keyword->_duplicate_link)
+	    continue;
 
-      if (index < keyword->_hash_value && !option[SWITCH] && !option[DUP])
-        {
-          /* Some blank entries.  */
-          for ( ; index < keyword->_hash_value; index++)
-            {
-              if (index > 0)
-                printf (",");
-              if ((column++ % columns) == 0)
-                printf ("\n%s   ", indent);
-              printf ("%3d", 0);
-            }
-        }
+	if (index < keyword->_hash_value && !option[SWITCH] && !option[DUP])
+	{
+	    /* Some blank entries.  */
+	    for ( ; index < keyword->_hash_value; index++)
+	    {
+		if (index > 0)
+		    printf (",");
+		if ((column++ % columns) == 0)
+		    printf ("\n%s   ", indent);
+		printf ("%3d", 0);
+	    }
+	}
 
-      if (index > 0)
-        printf (",");
-      if ((column++ % columns) == 0)
-        printf("\n%s   ", indent);
-      printf ("%3d", keyword->_allchars_length);
-      index++;
+	if (index > 0)
+	    printf (",");
+	if ((column++ % columns) == 0)
+	    printf("\n%s   ", indent);
+	printf ("%3d", keyword->_allchars_length);
+	index++;
 
-      /* Deal with duplicates specially.  */
-      if (keyword->_duplicate_link) // implies option[DUP]
-        for (KeywordExt *links = keyword->_duplicate_link; links; links = links->_duplicate_link)
-          {
-            printf (",");
-            if ((column++ % columns) == 0)
-              printf("\n%s   ", indent);
-            printf ("%3d", links->_allchars_length);
-            index++;
-          }
+	/* Deal with duplicates specially.  */
+	if (keyword->_duplicate_link) // implies option[DUP]
+	    for (KeywordExt *links = keyword->_duplicate_link; links; links = links->_duplicate_link)
+	    {
+		printf (",");
+		if ((column++ % columns) == 0)
+		    printf("\n%s   ", indent);
+		printf ("%3d", links->_allchars_length);
+		index++;
+	    }
     }
 
-  printf ("\n%s  };\n", indent);
-  if (option[GLOBAL])
-    printf ("\n");
+    printf ("\n%s  };\n", indent);
+    if (option[GLOBAL])
+	printf ("\n");
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1075,190 +1096,190 @@ Output::output_keylength_table () const
 void
 Output::output_string_pool () const
 {
-  const char * const indent = option[TYPE] || option[GLOBAL] ? "" : "  ";
-  int index;
-  KeywordExt_List *temp;
+    const char * const indent = option[TYPE] || option[GLOBAL] ? "" : "  ";
+    int index;
+    KeywordExt_List *temp;
 
-  printf ("%sstruct %s_t\n"
-          "%s  {\n",
-          indent, option.get_stringpool_name (), indent);
-  for (temp = _head, index = 0; temp; temp = temp->rest())
+    printf ("%sstruct %s_t\n"
+	    "%s  {\n",
+	    indent, option.get_stringpool_name (), indent);
+    for (temp = _head, index = 0; temp; temp = temp->rest())
     {
-      KeywordExt *keyword = temp->first();
+	KeywordExt *keyword = temp->first();
 
-      /* If generating a switch statement, and there is no user defined type,
-         we generate non-duplicates directly in the code.  Only duplicates go
-         into the table.  */
-      if (option[SWITCH] && !option[TYPE] && !keyword->_duplicate_link)
-        continue;
+	/* If generating a switch statement, and there is no user defined type,
+	   we generate non-duplicates directly in the code.  Only duplicates go
+	   into the table.  */
+	if (option[SWITCH] && !option[TYPE] && !keyword->_duplicate_link)
+	    continue;
 
-      if (!option[SWITCH] && !option[DUP])
-        index = keyword->_hash_value;
+	if (!option[SWITCH] && !option[DUP])
+	    index = keyword->_hash_value;
 
-      printf ("%s    char %s_str%d[sizeof(",
-              indent, option.get_stringpool_name (), index);
-      output_string (keyword->_allchars, keyword->_allchars_length);
-      printf (")];\n");
+	printf ("%s    char %s_str%d[sizeof(",
+		indent, option.get_stringpool_name (), index);
+	output_string (keyword->_allchars, keyword->_allchars_length);
+	printf (")];\n");
 
-      /* Deal with duplicates specially.  */
-      if (keyword->_duplicate_link) // implies option[DUP]
-        for (KeywordExt *links = keyword->_duplicate_link; links; links = links->_duplicate_link)
-          if (!(links->_allchars_length == keyword->_allchars_length
-                && memcmp (links->_allchars, keyword->_allchars,
-                           keyword->_allchars_length) == 0))
-            {
-              index++;
-              printf ("%s    char %s_str%d[sizeof(",
-                      indent, option.get_stringpool_name (), index);
-              output_string (links->_allchars, links->_allchars_length);
-              printf (")];\n");
-            }
+	/* Deal with duplicates specially.  */
+	if (keyword->_duplicate_link) // implies option[DUP]
+	    for (KeywordExt *links = keyword->_duplicate_link; links; links = links->_duplicate_link)
+		if (!(links->_allchars_length == keyword->_allchars_length
+			    && memcmp (links->_allchars, keyword->_allchars,
+				keyword->_allchars_length) == 0))
+		{
+		    index++;
+		    printf ("%s    char %s_str%d[sizeof(",
+			    indent, option.get_stringpool_name (), index);
+		    output_string (links->_allchars, links->_allchars_length);
+		    printf (")];\n");
+		}
 
-      index++;
+	index++;
     }
-  printf ("%s  };\n",
-          indent);
+    printf ("%s  };\n",
+	    indent);
 
-  printf ("%sstatic %sstruct %s_t %s_contents =\n"
-          "%s  {\n",
-          indent, const_readonly_array, option.get_stringpool_name (),
-          option.get_stringpool_name (), indent);
-  for (temp = _head, index = 0; temp; temp = temp->rest())
+    printf ("%sstatic %sstruct %s_t %s_contents =\n"
+	    "%s  {\n",
+	    indent, const_readonly_array, option.get_stringpool_name (),
+	    option.get_stringpool_name (), indent);
+    for (temp = _head, index = 0; temp; temp = temp->rest())
     {
-      KeywordExt *keyword = temp->first();
+	KeywordExt *keyword = temp->first();
 
-      /* If generating a switch statement, and there is no user defined type,
-         we generate non-duplicates directly in the code.  Only duplicates go
-         into the table.  */
-      if (option[SWITCH] && !option[TYPE] && !keyword->_duplicate_link)
-        continue;
+	/* If generating a switch statement, and there is no user defined type,
+	   we generate non-duplicates directly in the code.  Only duplicates go
+	   into the table.  */
+	if (option[SWITCH] && !option[TYPE] && !keyword->_duplicate_link)
+	    continue;
 
-      if (index > 0)
-        printf (",\n");
+	if (index > 0)
+	    printf (",\n");
 
-      if (!option[SWITCH] && !option[DUP])
-        index = keyword->_hash_value;
+	if (!option[SWITCH] && !option[DUP])
+	    index = keyword->_hash_value;
 
-      printf ("%s    ",
-              indent);
-      output_string (keyword->_allchars, keyword->_allchars_length);
+	printf ("%s    ",
+		indent);
+	output_string (keyword->_allchars, keyword->_allchars_length);
 
-      /* Deal with duplicates specially.  */
-      if (keyword->_duplicate_link) // implies option[DUP]
-        for (KeywordExt *links = keyword->_duplicate_link; links; links = links->_duplicate_link)
-          if (!(links->_allchars_length == keyword->_allchars_length
-                && memcmp (links->_allchars, keyword->_allchars,
-                           keyword->_allchars_length) == 0))
-            {
-              index++;
-              printf (",\n");
-              printf ("%s    ",
-                      indent);
-              output_string (links->_allchars, links->_allchars_length);
-            }
+	/* Deal with duplicates specially.  */
+	if (keyword->_duplicate_link) // implies option[DUP]
+	    for (KeywordExt *links = keyword->_duplicate_link; links; links = links->_duplicate_link)
+		if (!(links->_allchars_length == keyword->_allchars_length
+			    && memcmp (links->_allchars, keyword->_allchars,
+				keyword->_allchars_length) == 0))
+		{
+		    index++;
+		    printf (",\n");
+		    printf ("%s    ",
+			    indent);
+		    output_string (links->_allchars, links->_allchars_length);
+		}
 
-      index++;
+	index++;
     }
-  if (index > 0)
-    printf ("\n");
-  printf ("%s  };\n",
-          indent);
-  printf ("%s#define %s ((%schar *) &%s_contents)\n",
-          indent, option.get_stringpool_name (), const_always,
-          option.get_stringpool_name ());
-  if (option[GLOBAL])
-    printf ("\n");
+    if (index > 0)
+	printf ("\n");
+    printf ("%s  };\n",
+	    indent);
+    printf ("%s#define %s ((%schar *) &%s_contents)\n",
+	    indent, option.get_stringpool_name (), const_always,
+	    option.get_stringpool_name ());
+    if (option[GLOBAL])
+	printf ("\n");
 }
 
 /* ------------------------------------------------------------------------- */
 
-static void
+    static void
 output_keyword_entry (KeywordExt *temp, int stringpool_index, const char *indent, bool is_duplicate)
 {
-  if (option[TYPE])
-    output_line_directive (temp->_lineno);
-  printf ("%s    ", indent);
-  if (option[TYPE])
-    printf ("{");
-  if (option[SHAREDLIB])
-    /* How to determine a certain offset in stringpool at compile time?
-       - The standard way would be to use the 'offsetof' macro.  But it is only
-         defined in <stddef.h>, and <stddef.h> is not among the prerequisite
-         header files that the user must #include.
-       - The next best way would be to take the address and cast to 'intptr_t'
-         or 'uintptr_t'.  But these types are only defined in <stdint.h>, and
-         <stdint.h> is not among the prerequisite header files that the user
-         must #include.
-       - The next best approximation of 'uintptr_t' is 'size_t'.  It is defined
-         in the prerequisite header <string.h>.
-       - The types 'long' and 'unsigned long' do work as well, but on 64-bit
-         native Windows platforms, they don't have the same size as pointers
-         and therefore generate warnings.  */
-    printf ("(int)(size_t)&((struct %s_t *)0)->%s_str%d",
-            option.get_stringpool_name (), option.get_stringpool_name (),
-            stringpool_index);
-  else
-    output_string (temp->_allchars, temp->_allchars_length);
-  if (option[TYPE])
+    if (option[TYPE])
+	output_line_directive (temp->_lineno);
+    printf ("%s    ", indent);
+    if (option[TYPE])
+	printf ("{");
+    if (option[SHAREDLIB])
+	/* How to determine a certain offset in stringpool at compile time?
+	   - The standard way would be to use the 'offsetof' macro.  But it is only
+	   defined in <stddef.h>, and <stddef.h> is not among the prerequisite
+	   header files that the user must #include.
+	   - The next best way would be to take the address and cast to 'intptr_t'
+	   or 'uintptr_t'.  But these types are only defined in <stdint.h>, and
+	   <stdint.h> is not among the prerequisite header files that the user
+	   must #include.
+	   - The next best approximation of 'uintptr_t' is 'size_t'.  It is defined
+	   in the prerequisite header <string.h>.
+	   - The types 'long' and 'unsigned long' do work as well, but on 64-bit
+	   native Windows platforms, they don't have the same size as pointers
+	   and therefore generate warnings.  */
+	printf ("(int)(size_t)&((struct %s_t *)0)->%s_str%d",
+		option.get_stringpool_name (), option.get_stringpool_name (),
+		stringpool_index);
+    else
+	output_string (temp->_allchars, temp->_allchars_length);
+    if (option[TYPE])
     {
-      if (strlen (temp->_rest) > 0)
-        printf (",%s", temp->_rest);
-      printf ("}");
+	if (strlen (temp->_rest) > 0)
+	    printf (",%s", temp->_rest);
+	printf ("}");
     }
-  if (option[DEBUG])
+    if (option[DEBUG])
     {
-      printf (" /* ");
-      if (is_duplicate)
-        printf ("hash value duplicate, ");
-      else
-        printf ("hash value = %d, ", temp->_hash_value);
-      printf ("index = %d */", temp->_final_index);
+	printf (" /* ");
+	if (is_duplicate)
+	    printf ("hash value duplicate, ");
+	else
+	    printf ("hash value = %d, ", temp->_hash_value);
+	printf ("index = %d */", temp->_final_index);
     }
 }
 
-static void
+    static void
 output_keyword_blank_entries (int count, const char *indent)
 {
-  int columns;
-  if (option[TYPE])
+    int columns;
+    if (option[TYPE])
     {
-      columns = 58 / (4 + (option[SHAREDLIB] ? 2 : option[NULLSTRINGS] ? 8 : 2)
-                        + strlen (option.get_initializer_suffix()));
-      if (columns == 0)
-        columns = 1;
+	columns = 58 / (4 + (option[SHAREDLIB] ? 2 : option[NULLSTRINGS] ? 8 : 2)
+		+ strlen (option.get_initializer_suffix()));
+	if (columns == 0)
+	    columns = 1;
     }
-  else
+    else
     {
-      columns = (option[SHAREDLIB] ? 9 : option[NULLSTRINGS] ? 4 : 9);
+	columns = (option[SHAREDLIB] ? 9 : option[NULLSTRINGS] ? 4 : 9);
     }
-  int column = 0;
-  for (int i = 0; i < count; i++)
+    int column = 0;
+    for (int i = 0; i < count; i++)
     {
-      if ((column % columns) == 0)
-        {
-          if (i > 0)
-            printf (",\n");
-          printf ("%s    ", indent);
-        }
-      else
-        {
-          if (i > 0)
-            printf (", ");
-        }
-      if (option[TYPE])
-        printf ("{");
-      if (option[SHAREDLIB])
-        printf ("-1");
-      else
-        {
-          if (option[NULLSTRINGS])
-            printf ("(char*)0");
-          else
-            printf ("\"\"");
-        }
-      if (option[TYPE])
-        printf ("%s}", option.get_initializer_suffix());
-      column++;
+	if ((column % columns) == 0)
+	{
+	    if (i > 0)
+		printf (",\n");
+	    printf ("%s    ", indent);
+	}
+	else
+	{
+	    if (i > 0)
+		printf (", ");
+	}
+	if (option[TYPE])
+	    printf ("{");
+	if (option[SHAREDLIB])
+	    printf ("-1");
+	else
+	{
+	    if (option[NULLSTRINGS])
+		printf ("(char*)0");
+	    else
+		printf ("\"\"");
+	}
+	if (option[TYPE])
+	    printf ("%s}", option.get_initializer_suffix());
+	column++;
     }
 }
 
@@ -1273,14 +1294,14 @@ Output::output_keyword_table () const
 
     if(option[OUTPUTINDEX]) 
     {
-	  for (temp = _head, index = 0; temp; temp = temp->rest(), index++)
-	  {
-	KeywordExt *keyword = temp->first();
-		  printf("#define %.*s %d\n",keyword->_allchars_length, keyword->_allchars, index);
-	      keyword->_final_index = index;
-	  }
-	  printf("\n");
-	  return;
+	for (temp = _head, index = 0; temp; temp = temp->rest(), index++)
+	{
+	    KeywordExt *keyword = temp->first();
+	    printf("#define %.*s %d\n",keyword->_allchars_length, keyword->_allchars, index);
+	    keyword->_final_index = index;
+	}
+	printf("\n");
+	return;
     }
 
     printf ("%sstatic ",
@@ -2029,7 +2050,7 @@ SKIP_:
 /* Generates C code for the lookup function.  */
 
 void
-Output::output_lookup_function () const
+Output::output_lookup_function (...) const
 {
     /* Output the function's head.  */
     /* We don't declare the lookup function 'static' because we cannot make
@@ -2043,6 +2064,27 @@ Output::output_lookup_function () const
     if (option[CPLUSPLUS])
 	printf ("%s::", option.get_class_name ());
     printf ("%s ", option.get_function_name ());
+
+    va_list dec;
+    va_start(dec, 1);
+    if(!va_arg(dec, int))
+    {
+	printf (option[KRC] ?
+		"(str, len)\n"
+		"     %schar *str;\n"
+		"     %ssize_t len;\n" :
+		option[C] ?
+		"(str, len)\n"
+		"     %sconst char *str;\n"
+		"     %ssize_t len;\n" :
+		option[ANSIC] | option[CPLUSPLUS] ?
+		"(%sconst char *str, %ssize_t len);\n" :
+		"",
+		register_scs, register_scs);
+	va_end(dec);
+	return;
+    }
+    va_end(dec);
     printf (option[KRC] ?
 	    "(str, len)\n"
 	    "     %schar *str;\n"
@@ -2055,7 +2097,6 @@ Output::output_lookup_function () const
 	    "(%sconst char *str, %ssize_t len)\n" :
 	    "",
 	    register_scs, register_scs);
-
     /* Output the function's body.  */
     printf ("{\n");
 
@@ -2135,7 +2176,7 @@ Output::output ()
 	printf ("ANSI-C");
     else if (option[CPLUSPLUS])
 	printf ("C++");
-    printf (" code produced by gperf version %s */\n", version_string);
+    printf (" code produced by custom gperf (and it's badly patched). See https://github.com/B83C/gperf for the entire build.*/\n", version_string);
     option.print_options ();
     printf ("\n");
     if (!option[POSITIONS])
@@ -2177,6 +2218,14 @@ Output::output ()
 		"/* The character set is not based on ISO-646.  */\n");
 	printf ("%s \"gperf generated tables don't work with this execution character set. Please report a bug to <bug-gperf@gnu.org>.\"\n", option[KRC] || option[C] ? "error" : "#error");
 	printf ("#endif\n\n");
+    }
+
+    if(option[SEPERATE_DEF])
+    {
+	char* temp =  option.add_output_file_extension("h", 1);
+	freopen(temp, "w", stdout);
+	printf("#ifndef GPERF_PERF_HASH\n#define GPERF_PERF_HASH\n");
+	free(temp);
     }
 
     if (_verbatim_declarations < _verbatim_declarations_end)
@@ -2240,6 +2289,16 @@ Output::output ()
 		option.get_class_name (), option.get_hash_name (),
 		const_for_struct, _return_type, option.get_function_name ());
 
+    if(option[SEPERATE_DEF])
+    {
+	output_hash_function (0);
+	output_lookup_function (0);
+	printf("#endif");
+	char* temp =  option.add_output_file_extension("c", 1);
+	freopen(temp, "a", stdout);
+	printf("#include \"%s.h\"\n\n", basename(option.get_output_file_name()));
+	free(temp);
+    }
     output_hash_function ();
 
     if (option[SHAREDLIB] && (option[GLOBAL] || option[TYPE]))

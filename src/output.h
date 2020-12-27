@@ -26,6 +26,7 @@
 
 #include "keyword-list.h"
 #include "positions.h"
+#include <stdarg.h>
 
 /* OSF/1 cxx needs these forward declarations. */
 struct Output_Constants;
@@ -79,7 +80,7 @@ private:
 
   /* Generates C code for the hash function that returns the
      proper encoding for each keyword.  */
-  void                  output_hash_function () const;
+  void                  output_hash_function (...) const;
 
   /* Prints out a table of keyword lengths, for use with the
      comparison code in generated function 'in_word_set'.  */
@@ -106,7 +107,7 @@ private:
   void                  output_lookup_function_body (const struct Output_Compare&) const;
 
   /* Generates C code for the lookup function.  */
-  void                  output_lookup_function () const;
+  void                  output_lookup_function (...) const;
 
   /* Linked list of keywords.  */
   KeywordExt_List *     _head;

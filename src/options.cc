@@ -70,6 +70,7 @@ static const char *const DEFAULT_DELIMITERS = ",";
 
 /* Prints program usage to given stream.  */
 
+
 void
 Options::short_usage (FILE * stream)
 {
@@ -730,6 +731,7 @@ static const struct option long_options[] =
   { "version", no_argument, NULL, 'v' },
   { "debug", no_argument, NULL, 'd' },
   { "return-int", required_argument, NULL, 'R' },
+  { "seperate-def", required_argument, NULL, 'X' },
   { NULL, no_argument, NULL, 0 }
 };
 
@@ -744,7 +746,7 @@ Options::parse_options (int argc, char *argv[])
 
   while ((option_char =
             getopt_long (_argument_count, _argument_vector,
-                         "acCdDe:Ef:F:gGhH:i:Ij:k:K:lL:m:nN:oOpPQ:rs:S:tTvW:Z:7R:",
+                         "acCdDe:Ef:F:gGhH:i:Ij:k:K:lL:m:nN:oOpPQ:rs:S:tTvW:Z:7XR:",
                          long_options, NULL))
          != -1)
     {
@@ -1068,6 +1070,11 @@ There is NO WARRANTY, to the extent permitted by law.\n\
             _constants_prefix = /*getopt*/optarg;
             break;
           }
+	case 'X':
+	  {
+	    _option_word |= SEPERATE_DEF;
+	    break;
+	  }
 	case 'R':
 	  {
 	      if(optarg[0] == 'i')
@@ -1100,6 +1107,20 @@ There is NO WARRANTY, to the extent permitted by law.\n\
       short_usage (stderr);
       exit (1);
   }
+}
+
+char* 
+Options::add_output_file_extension(char* extension, size_t exlen)
+{
+    const int len = strlen(_output_file_name);
+    char* dest = (char*)malloc (len + exlen);
+    memcpy(dest, _output_file_name, len);
+    *(dest + len) = '.';
+    for(int i = 0; i < exlen; i++)
+    {
+	*(dest + len + 1 + i) = *(extension + i);
+    }
+    return dest;
 }
 
 /* ------------------------------------------------------------------------- */
