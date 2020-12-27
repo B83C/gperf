@@ -109,6 +109,7 @@ private:
   /* Generates C code for the lookup function.  */
   void                  output_lookup_function (...) const;
 
+  void			replace_dash_with_underscore(char* dest, const char* str, size_t len) const;
   /* Linked list of keywords.  */
   KeywordExt_List *     _head;
 

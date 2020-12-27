@@ -1283,6 +1283,17 @@ output_keyword_blank_entries (int count, const char *indent)
     }
 }
 
+
+void		
+Output::replace_dash_with_underscore(char* dest, const char* str, size_t len) const
+{
+    realloc(dest, len);
+    strncpy(dest, str, len);
+    for(int i = 0; i < len; i++)
+    {
+	*(dest + i) += 50*(*(dest + i) == 45);
+    }
+}
 /* Prints out the array containing the keywords for the hash function.  */
 
 void
@@ -1294,13 +1305,16 @@ Output::output_keyword_table () const
 
     if(option[OUTPUTINDEX]) 
     {
+	char* key = (char*)malloc(0);
 	for (temp = _head, index = 0; temp; temp = temp->rest(), index++)
 	{
 	    KeywordExt *keyword = temp->first();
-	    printf("#define %.*s %d\n",keyword->_allchars_length, keyword->_allchars, index);
+	    replace_dash_with_underscore(key, keyword->_allchars, keyword->_allchars_length);
+	    printf("#define %.*s %d\n", keyword->_allchars_length,key, index);
 	    keyword->_final_index = index;
 	}
 	printf("\n");
+	free(key);
 	return;
     }
 
@@ -2242,7 +2256,8 @@ Output::output ()
     }
 
     if (option[INCLUDE])
-	printf ("#include <string.h>\n"); /* Declare strlen(), strcmp(), strncmp(). */
+	printf("#include <stdint.h>\n");
+    //	printf ("#include <string.h>\n"); /* Declare strlen(), strcmp(), strncmp(). */
 
     if (!option[ENUM])
     {
