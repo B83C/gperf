@@ -118,7 +118,9 @@ enum Option_Type
   OUTPUTINDEX_S= 1 << 23,
 
   /* Generate seperated header and definitions */
-  SEPERATE_DEF = 1 << 24
+  SEPERATE_DEF = 1 << 24, 
+  STATIC_INLINE = 1 << 25,
+  NO_LEN_CHECKUP = 1 << 26
 };
 
 /* Class manager for gperf program Options.  */

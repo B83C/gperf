@@ -715,7 +715,7 @@ static const struct option long_options[] =
   { "compare-strlen", no_argument, NULL, 'l' }, /* backward compatibility */
   { "compare-lengths", no_argument, NULL, 'l' },
   { "duplicates", no_argument, NULL, 'D' },
-  { "fast", required_argument, NULL, 'f' },
+  { "fast", no_argument, NULL, 'f' },
   { "initial-asso", required_argument, NULL, 'i' },
   { "jump", required_argument, NULL, 'j' },
   { "multiple-iterations", required_argument, NULL, 'm' },
@@ -732,6 +732,7 @@ static const struct option long_options[] =
   { "debug", no_argument, NULL, 'd' },
   { "return-int", required_argument, NULL, 'R' },
   { "seperate-def", required_argument, NULL, 'X' },
+  { "static-inline", required_argument, NULL, 'J' },
   { NULL, no_argument, NULL, 0 }
 };
 
@@ -746,7 +747,7 @@ Options::parse_options (int argc, char *argv[])
 
   while ((option_char =
             getopt_long (_argument_count, _argument_vector,
-                         "acCdDe:Ef:F:gGhH:i:Ij:k:K:lL:m:nN:oOpPQ:rs:S:tTvW:Z:7XR:",
+                         "acCdDe:E:F:gGhH:i:Ij:k:K:lL:m:nN:oOpPQ:rs:S:tTvW:Z:7XfJR:",
                          long_options, NULL))
          != -1)
     {
@@ -787,7 +788,10 @@ Options::parse_options (int argc, char *argv[])
             break;
           }
         case 'f':               /* Generate the hash table "fast".  */
+	  {
+	  _option_word |= NO_LEN_CHECKUP;
           break;                /* Not needed any more.  */
+	  }
         case 'F':
           {
             _initializer_suffix = /*getopt*/optarg;
@@ -1089,6 +1093,11 @@ There is NO WARRANTY, to the extent permitted by law.\n\
                 fprintf (stderr, "it has to be either followed by n or s, n stands for no strcmp (meaning plain index, and in this case similar words could potentially gives you the same output), whereas s stands for strcmp (meaning it will check whether the text matches)");
 		exit(1);
 	      }
+	      break;
+	  }
+	case 'J':
+	  {
+	      _option_word |= STATIC_INLINE;
 	      break;
 	  }
 	default:

@@ -1726,10 +1726,11 @@ output_switches (KeywordExt_List *list, int num_switches, int size, int min_hash
 void
 Output::output_lookup_function_body (const Output_Compare& comparison) const
 {
-    printf ("  if (len <= %sMAX_WORD_LENGTH && len >= %sMIN_WORD_LENGTH)\n"
-	    "    {\n"
-	    "      %sunsigned int key = %s (str, len);\n\n",
-	    option.get_constants_prefix (), option.get_constants_prefix (),
+    if(!option[NO_LEN_CHECKUP])
+	printf ("  if (len <= %sMAX_WORD_LENGTH && len >= %sMIN_WORD_LENGTH)\n"
+	    "    {\n",option.get_constants_prefix () ,option.get_constants_prefix ());
+    printf ("    %sunsigned int key = %s (str, len);\n\n",
+	 
 	    register_scs, option.get_hash_name ());
 
     if (option[SWITCH])
@@ -1739,6 +1740,9 @@ Output::output_lookup_function_body (const Output_Compare& comparison) const
 	if (num_switches > switch_size)
 	    num_switches = switch_size;
 
+
+    if(!option[NO_LEN_CHECKUP])
+    {
 	printf ("      if (key <= %sMAX_HASH_VALUE",
 		option.get_constants_prefix ());
 	if (_min_hash_value > 0)
@@ -1746,6 +1750,7 @@ Output::output_lookup_function_body (const Output_Compare& comparison) const
 		    option.get_constants_prefix ());
 	printf (")\n"
 		"        {\n");
+    }
 	if (option[DUP] && _total_duplicates > 0)
 	{
 	    if (option[LENTABLE])
@@ -1781,7 +1786,7 @@ Output::output_lookup_function_body (const Output_Compare& comparison) const
 
 	output_switches (_head, num_switches, switch_size, _min_hash_value, _max_hash_value, 10);
 
-	printf ("          return 0;\n");
+	printf ("          return -1;\n");
 	if (option[DUP] && _total_duplicates > 0)
 	{
 	    int indent = 8;
@@ -1862,6 +1867,7 @@ Output::output_lookup_function_body (const Output_Compare& comparison) const
 		    "            return resword;\n");
 	}
 SKIP_:
+    if(!option[NO_LEN_CHECKUP])
 	printf ("        }\n");
     }
     else
@@ -2057,8 +2063,8 @@ SKIP_:
 		    indent, "");
 	}
     }
-    printf ("    }\n"
-	    "  return 0;\n");
+    if(!option[NO_LEN_CHECKUP])
+	printf ("    }\n  return -1;\n");
 }
 
 /* Generates C code for the lookup function.  */
@@ -2073,6 +2079,8 @@ Output::output_lookup_function (...) const
        because non-static inline functions must not reference static functions or
        variables, see ISO C 99 section 6.7.4.(3).  */
 
+    if(option[STATIC_INLINE])
+	printf("static inline ");
     printf ("%s%s\n",
 	    const_for_struct, _return_type);
     if (option[CPLUSPLUS])
@@ -2256,7 +2264,7 @@ Output::output ()
     }
 
     if (option[INCLUDE])
-	printf("#include <stdint.h>\n");
+	printf("#include <stddef.h>\n");
     //	printf ("#include <string.h>\n"); /* Declare strlen(), strcmp(), strncmp(). */
 
     if (!option[ENUM])
