@@ -2200,7 +2200,7 @@ Output::output ()
 	printf ("C++");
     printf (" code produced by custom gperf (and it's badly patched). See https://github.com/B83C/gperf for the entire build.*/\n", version_string);
     option.print_options ();
-    printf ("\n");
+    printf ("\n#ifndef GPERF_PERF_HASH\n#define GPERF_PERF_HASH\n");
     if (!option[POSITIONS])
     {
 	printf ("/* Computed positions: -k'");
@@ -2336,6 +2336,7 @@ Output::output ()
 	output_line_directive (_verbatim_code_lineno);
 	fwrite (_verbatim_code, 1, _verbatim_code_end - _verbatim_code, stdout);
     }
+    printf ("#endif");
 
     fflush (stdout);
 }
