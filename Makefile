@@ -33,56 +33,47 @@ all : force
 	cd lib; $(MAKE) all
 	cd src; $(MAKE) all
 	cd tests; $(MAKE) all
-	cd doc; $(MAKE) all
 
 install : force
 	cd lib; $(MAKE) install
 	cd src; $(MAKE) install
 	cd tests; $(MAKE) install
-	cd doc; $(MAKE) install
 
 installdirs : force
 	cd lib; $(MAKE) installdirs
 	cd src; $(MAKE) installdirs
 	cd tests; $(MAKE) installdirs
-	cd doc; $(MAKE) installdirs
 
 uninstall : force
 	cd lib; $(MAKE) uninstall
 	cd src; $(MAKE) uninstall
 	cd tests; $(MAKE) uninstall
-	cd doc; $(MAKE) uninstall
 
 check : force
 	cd lib; $(MAKE) check
 	cd src; $(MAKE) check
 	cd tests; $(MAKE) check
-	cd doc; $(MAKE) check
 
 mostlyclean : force
 	cd lib; $(MAKE) mostlyclean
 	cd src; $(MAKE) mostlyclean
 	cd tests; $(MAKE) mostlyclean
-	cd doc; $(MAKE) mostlyclean
 
 clean : force
 	cd lib; $(MAKE) clean
 	cd src; $(MAKE) clean
 	cd tests; $(MAKE) clean
-	cd doc; $(MAKE) clean
 
 distclean : force
 	cd lib; if test -f Makefile; then $(MAKE) distclean; fi
 	cd src; if test -f Makefile; then $(MAKE) distclean; fi
 	cd tests; if test -f Makefile; then $(MAKE) distclean; fi
-	cd doc; if test -f Makefile; then $(MAKE) distclean; fi
 	$(RM) config.status config.log config.cache Makefile
 
 maintainer-clean : force
 	cd lib; if test -f Makefile; then $(MAKE) maintainer-clean; fi
 	cd src; if test -f Makefile; then $(MAKE) maintainer-clean; fi
 	cd tests; if test -f Makefile; then $(MAKE) maintainer-clean; fi
-	cd doc; if test -f Makefile; then $(MAKE) maintainer-clean; fi
 	$(RM) config.status config.log config.cache Makefile
 
 # List of source files.
@@ -112,7 +103,6 @@ distdir : $(DISTFILES)
 	subdir=lib; test -d '$(distdir)'/$$subdir || mkdir '$(distdir)'/$$subdir; cd $$subdir; $(MAKE) distdir distdir='$(distdir)'/$$subdir
 	subdir=src; test -d '$(distdir)'/$$subdir || mkdir '$(distdir)'/$$subdir; cd $$subdir; $(MAKE) distdir distdir='$(distdir)'/$$subdir
 	subdir=tests; test -d '$(distdir)'/$$subdir || mkdir '$(distdir)'/$$subdir; cd $$subdir; $(MAKE) distdir distdir='$(distdir)'/$$subdir
-	subdir=doc; test -d '$(distdir)'/$$subdir || mkdir '$(distdir)'/$$subdir; cd $$subdir; $(MAKE) distdir distdir='$(distdir)'/$$subdir
 
 # Creating a distribution tarball.
 PACKAGE = gperf

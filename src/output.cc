@@ -27,6 +27,7 @@
 #include <cstdlib>  /* declares free() and malloc() */
 #include <assert.h> /* defines assert() */
 #include <limits.h> /* defines SCHAR_MAX etc. */
+#include <libgen.h>
 #include "options.h"
 #include "version.h"
 #include "config.h"
@@ -2319,7 +2320,7 @@ Output::output ()
 	printf("#endif");
 	char* temp =  option.add_output_file_extension("c", 1);
 	freopen(temp, "a", stdout);
-	printf("#include \"%s.h\"\n\n", basename(option.get_output_file_name()));
+	printf("#include \"%s.h\"\n\n", basename(const_cast<char*>(option.get_output_file_name())));
 	free(temp);
     }
     output_hash_function ();
